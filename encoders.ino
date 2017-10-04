@@ -6,7 +6,7 @@
  *  The motor + encoder being used:
  *  https://www.servocity.com/118-rpm-hd-premium-planetary-gear-motor-w-encoder
  *  
- *  Last modified by - Andrew Stuart (2/10/2017)
+ *  Last modified by - Andrew Stuart (4/10/2017)
  ****************************************************************************************/
 
 /************************************************************************************
@@ -26,21 +26,14 @@
 #define ENC2_CHA 2
 #define ENC3_CHA 3
 
-// Pins connected to Channel Bs of Encoders 1-4
-// todo: choose channel B pins for encoders
-#define ENC0_CHB    // insert later
-#define ENC1_CHB    // insert later
-#define ENC2_CHB    // insert later
-#define ENC3_CHB    // insert later
-
 // Encoder counters to keep track of number of pulses (set to long for safety)
-volatile long encCnts[4] = {0, 0, 0, 0};
+volatile int encCnts[4] = {0, 0, 0, 0};
 
 // Loop rate
-const float dt = 1.0/((float) LOOP_HERTZ);  // Time step
+const float dt = 1.0/((float) LOOP_HERTZ);  // Time step (sec)
 
-const unsigned int ppr = GEAR_RATIO * MOTOR_CYCLES_PER_REV; // Pulses per revolution
-const float coeff = 2*PI/(dt*ppr); // Converts pulse count to ang vel
+const unsigned int ppr = GEAR_RATIO * MOTOR_CYCLES_PER_REV; // Pulses per revolution (pulses/rev)
+
 
 /************************************************************************************
 * SETUP FUNCTION
@@ -60,59 +53,30 @@ void setup()
  ************************************************************************************/
 void loop() 
 {  
-  // Initialise angular velocities
-  float angVels[4] = {0, 0, 0, 0};
-
-  // Calculate angular velocities and reset encoder counters
-  // todo: review calculations
   for (int i=0; i<4; i++) {
-    angVels[i] = coeff*encCnts[i];
-    Serial.print("Encoder " + String(i) + " has RPM: " + String(60*angVels[i]/(2*PI)) + "\n"); 
+    Serial.print("Encoder " + String(i) + " has RPM: " + String((LOOP_HERTZ*60*encCnts)/ppr) + "\n"); // 
     encCnts[i] = 0; 
   }
   Serial.print("\n");
-  //todo: check if timer interrupt is more accurate that delay function
+  //todo: check if timer interrupt is more accurate than delay function
   delay(1000*dt);
 }
 
 /************************************************************************************
 * INTERRUPT SERVICE ROUTINES
-* ISRs for each corresponding encoder. CW movement is 10->01->10, so if the encoder
-* channel values are different, the wheel must be moving clockwise. Otherwise, if the
-* values are the same (00->11->00), the wheel must be moving in an anti-clockwise 
-* direction, so the count is decremented.
+* ISRs for each corresponding encoder.
  ************************************************************************************/
 void enc0() {
-  if(digitalRead(ENC0_CHA)!=digitalRead(ENC0_CHB)) {
-    encCnts[0]++;
-  }
-  else {
-    encCnts[0]--;
-  }
+  encCnts[0]++;
 }
 void enc1() {
-  if(digitalRead(ENC1_CHA)!=digitalRead(ENC1_CHB)) {
-    encCnts[1]++;
-  }
-  else {
-    encCnts[1]--;
-  }
+  encCnts[1]++;
 }
 void enc2() {
-   if(digitalRead(ENC2_CHA)!=digitalRead(ENC2_CHB)) {
-    encCnts[2]++;
-  }
-  else {
-    encCnts[2]--;
-  }
+  encCnts[2]++;
 }
 void enc3() {
-  if(digitalRead(ENC3_CHA)!=digitalRead(ENC3_CHB)) {
-    encCnts[3]++;
-  }
-  else {
-    encCnts[3]--;
-  }
+  encCnts[3]++;
 }
 
 /************************************************************************************
@@ -123,10 +87,6 @@ void InitPullUpResistors() {
   pinMode(ENC1_CHA, INPUT_PULLUP);
   pinMode(ENC2_CHA, INPUT_PULLUP);
   pinMode(ENC3_CHA, INPUT_PULLUP);
-  pinMode(ENC0_CHB, INPUT_PULLUP);
-  pinMode(ENC1_CHB, INPUT_PULLUP);
-  pinMode(ENC2_CHB, INPUT_PULLUP);
-  pinMode(ENC3_CHB, INPUT_PULLUP);
 }
 
 void InitInterrupts() {
